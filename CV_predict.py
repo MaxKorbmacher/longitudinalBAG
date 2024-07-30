@@ -26,6 +26,11 @@ T1 = pd.read_csv(datapath+'T1w_train.csv')
 dMRI = pd.read_csv(datapath+'dMRI_train.csv')
 multi = pd.read_csv(datapath+'multi_train.csv')
 
+# for code sanity checking, use low N, sampled from original
+#T1 = T1.sample(frac=0.01)
+#dMRI = dMRI.sample(frac=0.01)
+#multi = multi.sample(frac=0.01)
+
 # load test data
 T1_test1 = pd.read_csv(datapath+'T1w_test1.csv')
 T1_test2 = pd.read_csv(datapath+'T1w_test2.csv')
@@ -97,9 +102,9 @@ multi_test2_1 = multi_test2_1.drop('site',axis = 1)
 T1_train['X'] = range(len(T1_train))
 T1_test1_1['X'] = range(len(T1_test1_1))
 T1_test2_1['X'] = range(len(T1_test2_1))
-dMRI_train['X'] = range(len(dMRI_train))
-dMRI_test1_1['X'] = range(len(dMRI_test1_1))
-dMRI_test2_1['X'] = range(len(dMRI_test2_1))
+#dMRI_train['X'] = range(len(dMRI_train))
+#dMRI_test1_1['X'] = range(len(dMRI_test1_1))
+#dMRI_test2_1['X'] = range(len(dMRI_test2_1))
 multi_train['X'] = range(len(multi_train))
 multi_test1_1['X'] = range(len(multi_test1_1))
 multi_test2_1['X'] = range(len(multi_test2_1))
@@ -124,18 +129,25 @@ print("Fitting completed. Predictions start.")
 #
 # predict
 T1['T1_pred'] = T1_model.predict(T1_train)
+T1_test1_1 = T1_test1_1[T1_train.columns]
+T1_test2_1 = T1_test2_1[T1_train.columns]
 T1_test1['T1_pred'] = T1_model.predict(T1_test1_1)
 T1_test2['T1_pred'] = T1_model.predict(T1_test2_1)
 #
 T1['dMRI_pred'] = dMRI_model.predict(dMRI_train)
+# make sure the columns are in the right order.
+dMRI_test1_1 = dMRI_test1_1[dMRI_train.columns]
+dMRI_test2_1 = dMRI_test2_1[dMRI_train.columns]
 T1_test1['dMRI_pred'] = dMRI_model.predict(dMRI_test1_1)
 T1_test2['dMRI_pred'] = dMRI_model.predict(dMRI_test2_1)
 #
 T1['multi_pred'] = multi_model.predict(multi_train)
+multi_test1_1 = multi_test1_1[multi_train.columns]
+multi_test2_1 = multi_test2_1[multi_train.columns]
 T1_test1['multi_pred'] = multi_model.predict(multi_test1_1)
 T1_test2['multi_pred'] = multi_model.predict(multi_test2_1)
 
-train_save = T1_train[['eid', 'age', 'sex', 'site', 'T1_pred', 'dMRI_pred', 'multi_pred']]
+train_save = T1[['eid', 'age', 'sex', 'site', 'T1_pred', 'dMRI_pred', 'multi_pred']]
 test1_save = T1_test1[['eid', 'age', 'sex', 'site', 'T1_pred', 'dMRI_pred', 'multi_pred']]
 test2_save = T1_test2[['eid', 'age', 'sex', 'site', 'T1_pred', 'dMRI_pred', 'multi_pred']]
 

@@ -194,11 +194,11 @@ T1_model = our_model.fit(T1_train,T1_label)
 dMRI_model = our_model2.fit(dMRI_train, dMRI_label)
 multi_model = our_model3.fit(multi_train, multi_label)
 # Save the model on the disk (if this is wished)
-with open(savepath+ 'Lasso_T1_model_%s.pkl','wb') as f:
+with open(savepath+ 'Lasso_T1_model.pkl','wb') as f:
     pickle.dump(T1_model,f)
-with open(savepath+ 'Lasso_dMRI_model_%s.pkl','wb') as f:
+with open(savepath+ 'Lasso_dMRI_model.pkl','wb') as f:
     pickle.dump(dMRI_model,f)
-with open(savepath+ 'Lasso_multi_model_%s.pkl','wb') as f:
+with open(savepath+ 'Lasso_multi_model.pkl','wb') as f:
     pickle.dump(multi_model,f)
 # make predictions
 print("Training completed. Predictions are now made.")  
