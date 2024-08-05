@@ -239,4 +239,15 @@ names(res1) = c("Std.Beta", "SE", "t", "p", "F_smooth.Interact", "p.Interact")
 rownames(res1) = paste(BAG_pairs$y, BAG_pairs$x, sep = "_")
 write.csv(res1, paste(save_path,"H1b_ISI_BAG_smooth_interactions_TPindi.csv",sep=""))
 
+BAG_pairs = data.frame(x = c("AROC_PCA", "AROC_PCA"),
+                       y = c("CCu", "CCc"))
+res1 = data.frame(matrix(nrow = nrow(BAG_pairs), ncol = 6))
+plot.mod = list()
+for (i in 1:nrow(BAG_pairs)){
+  res1[i,] = H_test(BAG_pairs$x[i], BAG_pairs$y[i])[[1]]
+  plot.mod[[i]] = H_test(BAG_pairs$x[i], BAG_pairs$y[i])[[2]]
+}
+names(res1) = c("Std.Beta", "SE", "t", "p", "F_smooth.Interact", "p.Interact")
+rownames(res1) = paste(BAG_pairs$y, BAG_pairs$x, sep = "_")
+write.csv(res1, paste(save_path,"long_cross_associations_TPindi.csv",sep=""))
 print("The end.")
