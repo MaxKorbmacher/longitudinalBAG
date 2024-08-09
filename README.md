@@ -1,4 +1,4 @@
-Code, trained models, figures, supplemental data (full tables) for the paper "Disentangeling Neurodegeneration: The Brain Age Gap describes Healthy Ageing", Korbmacher, M. et. al. (2024).
+Code, trained models, figures, supplemental data (full tables), all figures and tables for the paper "Disentangeling Neurodegeneration: The Brain Age Gap describes Healthy Ageing", Korbmacher, M. et. al. (2024).
 
 **Code:**
 Sample_Size_Estimation.R estimation of power / necessary sample size assuming varying parameter shrinkages
