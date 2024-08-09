@@ -1,6 +1,6 @@
 Code, trained models, figures, supplemental data (full tables), all figures and tables for the paper "Disentangeling Neurodegeneration: The Brain Age Gap describes Healthy Ageing", Korbmacher, M. et. al. (2024).
 
-**Code:**
+**Code:** <br/>
 Sample_Size_Estimation.R estimation of power / necessary sample size assuming varying parameter shrinkages
 nested_CV_example.py example of nested CV procedure applied when training Lasso and XGB models
 Lasso_retrain.py code to re-fit Lasso models and to obtain predictions
