@@ -11,10 +11,10 @@ Code, trained models, figures, supplemental data (full tables), all figures and 
 <br/>
 <br/>
 **Models:** <br/>
-- XGB_T1w_model.txt, XGB_dMRI_model.txt, XGB_multimodal_model.txt <br/>
-- Lasso_T1_model.pkl, Lasso_dMRI_model.pkl, Lasso_multi_model.pkl <br/>
+* XGB_T1w_model.txt, XGB_dMRI_model.txt, XGB_multimodal_model.txt <br/>
+* Lasso_T1_model.pkl, Lasso_dMRI_model.pkl, Lasso_multi_model.pkl <br/>
  <br/>
 **Supplement:** <br/>
-- Supplementary data files can be found in SupplData1.zip & SupplData2.zip <br/>
-- Supplementary figures: SupplFigures.zip <br/>
-- Supplementary tables: SupplTables.zip <br/>
++ Supplementary data files can be found in SupplData1.zip & SupplData2.zip <br/>
++ Supplementary figures: SupplFigures.zip <br/>
++ Supplementary tables: SupplTables.zip <br/>
