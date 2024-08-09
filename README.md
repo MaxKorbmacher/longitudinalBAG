@@ -7,8 +7,10 @@ Lasso_retrain.py code to re-fit Lasso models and to obtain predictions
 CV_predict.py predictions using XGB models
 TimeIsolatedBrainAge.R contains the analyses of brain ages predicted at each time point doing a 50-50 split and predicting within and across time points.
 
-**Models**
+**Models:**
 XGB_T1w_model.txt, XGB_dMRI_model.txt, XGB_multimodal_model.txt; Lasso_T1_model.pkl, Lasso_dMRI_model.pkl, Lasso_multi_model.pkl
 
-**Supplement**
-Supplementary data files can be found in SupplData1.zip & SupplData2.zip
+**Supplement:**
+Supplementary data files can be found in SupplData1.zip & SupplData2.zip.
+Supplementary figures: SupplFigures.zip
+Supplementary tables: SupplTables.zip
