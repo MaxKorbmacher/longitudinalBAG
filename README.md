@@ -11,5 +11,4 @@ Code, trained models, figures, supplemental data (full tables), all figures and 
 * Lasso_T1_model.pkl, Lasso_dMRI_model.pkl, Lasso_multi_model.pkl </p>
 **Supplement:** <br/>
 + Supplementary data files can be found in SupplData1.zip & SupplData2.zip <br/>
-+ Supplementary figures: SupplFigures.zip <br/>
-+ Supplementary tables: SupplTables.zip <br/>
++ Supplementary figures and tables: Supplement.pdf <br/>
