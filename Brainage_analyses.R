@@ -169,7 +169,43 @@ plot00 = annotate_figure(plot00,top = text_grob("Sample Age Distributions by Sex
 ggsave(file = paste(save_path,"age_distribution.pdf",sep=""), plot00, width = 8, height = 3)
 # remove old dfs and plot objects
 rm(cross,p1,p2,p3)
+cross = dMRI %>% dplyr::select(-eid, -age, -sex, -site) %>% names()
+cross2 = T1w %>% dplyr::select(-eid, -age, -sex, -site) %>% names()
+cross_dMRI = c()
+dMRIn = data.frame(scale(dMRI[cross]))
+dMRIn$sex = dMRI$sex
+dMRIn$age = dMRI$age
+dMRIn$site = dMRI$site
+for (i in 1:length(cross)){
+  f = formula(paste(cross[i]," ~ age+sex+site", sep=""))
+  model = lm(f, data = dMRIn)
+  cross_dMRI[i] = lm.beta(model)$coefficients[2]
+}
+mean(abs(cross_dMRI))
+sd(cross_dMRI)
+hist(cross_dMRI)
+cross_T1w = c()
+T1n = data.frame(scale(T1w[cross2]))
+T1n$sex = T1w$sex
+T1n$age = T1w$age
+T1n$site = T1w$site
+for (i in 1:length(cross2)){
+  f = formula(paste(cross2[i]," ~ age+sex+site", sep=""))
+  model = lm(f, data = T1n)
+  cross_T1w[i] = lm.beta(model)$coefficients[2]
+}
+mean(cross_T1w)
+sd(cross_T1w)
 #
+var.test(cross_T1w,cross_dMRI)
+# one can check whether absolute effect sizes change the results, but in fact the variance diff is still sig
+var.test(abs(cross_T1w),abs(cross_dMRI), alternative = "two.sided")
+#
+# quick and dirty power analysis for univariate associations (those will have the lowest power)
+#library(pwr)
+pwr.f2.test(u = 5,v = 2160,sig.level = 0.05,power = .8)
+# u = 5 for metric, sex, site, age, the sex-age interaction
+# v = 2166 (polygenic risk score data sets) - 6
 #
 ############################################################################ #
 ############################################################################ #
@@ -206,6 +242,17 @@ model3 = readRDS(paste(save_path,"CV_models/LM_multi", sep = ""))
 #mod1 = lm(age~.,data = data1)
 #summary(mod1)
 #
+# save model coefficients only
+model1 = glm(age ~., data = data1)
+model1 = data.frame(model1$coefficients)
+write.csv(model1, paste(save_path,"LM_dMRI_Model_Coefficients.csv",sep=""))
+model2 = glm(age ~., data = data2)
+model2 = data.frame(model2$coefficients)
+write.csv(model2, paste(save_path,"LM_T1w_Model_Coefficients.csv",sep=""))
+model3 = glm(age ~., data = data3)
+model3 = data.frame(model3$coefficients)
+write.csv(model3, paste(save_path,"LM_multi_Model_Coefficients.csv",sep=""))
+rm(model1,model2,model3)
 # make vector of stats formula
 perfrow = function(trained_model, data, label){
   r2 = cor(predict(trained_model, data), label)^2
@@ -713,7 +760,7 @@ for (i in 1:3){
 }
 # create data frames for diffusion, T1w, and multimodal data & add time point dummy
 diff.dat = as.data.frame(BAGdf_reg[[1]])
-diff.dat$TP = c(replicate(nrow(demo1), 0), replicate(nrow(demo1), 1))
+diff.dat$TP = c(replicate(nrow(demo1), 1), replicate(nrow(demo1), 2))
 T1w.dat = data.frame(BAGdf_reg[[2]])
 T1w.dat$TP = diff.dat$TP
 multi.dat = data.frame(BAGdf_reg[[3]])
@@ -780,7 +827,7 @@ rm(a,b,c,TP.diff.tab, M.TP)
 #
 ## dMRI = Panel 1
 diff.dat$TP = as.factor(diff.dat$TP)
-diff.dat$TP = factor(diff.dat$TP, levels = c("1","0"))
+diff.dat$TP = factor(diff.dat$TP, levels = c("2","1"))
 diff.dat$BAGu = unlist(diff.dat$BAGu)
 diff.dat$BAGc = unlist(diff.dat$BAGc)
 panel1 = diff.dat %>% select(TP, BAGu, BAGc) %>% 
@@ -796,7 +843,7 @@ panel1 = panel1 + annotate("text", label = (paste("d = ", round(cohen.d(diff.dat
 panel1 = panel1 + annotate("text", label = (paste("d = ", round(cohen.d(diff.dat$BAGu, diff.dat$TP, paired = T)$estimate, 3), sep = "")), x = 13.5, y = 1.5, size = 6, hjust = 0)
 ## T1w = panel 2
 T1w.dat$TP = as.factor(T1w.dat$TP)
-T1w.dat$TP = factor(T1w.dat$TP, levels = c("1","0"))
+T1w.dat$TP = factor(T1w.dat$TP, levels = c("2","1"))
 T1w.dat$BAGu = unlist(T1w.dat$BAGu)
 T1w.dat$BAGc = unlist(T1w.dat$BAGc)
 panel2 = T1w.dat %>% select(TP, BAGu, BAGc) %>% 
@@ -812,7 +859,7 @@ panel2 = panel2 + annotate("text", label = (paste("d = ", round(cohen.d(T1w.dat$
 panel2 = panel2 + annotate("text", label = (paste("d = ", round(cohen.d(T1w.dat$BAGu, T1w.dat$TP, paired = T)$estimate, 3), sep = "")), x = 13.5, y = 1.5, size = 6, hjust = 0)
 ## multimodal MRI = panel3
 multi.dat$TP = as.factor(multi.dat$TP)
-multi.dat$TP = factor(multi.dat$TP, levels = c("1","0"))
+multi.dat$TP = factor(multi.dat$TP, levels = c("2","1"))
 multi.dat$BAGu = unlist(multi.dat$BAGu)
 multi.dat$BAGc = unlist(multi.dat$BAGc)
 panel3 = multi.dat %>% select(TP, BAGu, BAGc) %>% 
@@ -870,6 +917,7 @@ panel2 = panel2 + annotate("text", label = (paste("d = ", round(cohen.d(T1w.dat$
 # multimodal MRI
 #
 multi.dat$TP = as.factor(multi.dat$TP)
+multi.dat$age = T1w.dat$age
 panel3 = multi.dat %>% select(age, TP, predicted_age, predicted_age_corrected) %>% 
   rename("Age" = "age","Time Point" = "TP","Predicted\nAge" = "predicted_age", "Corrected\nPredicted\nAge" = "predicted_age_corrected") %>% 
   melt(id.vars = "Time Point") %>%
@@ -1188,8 +1236,8 @@ scatter.plot2 = function(x, y, xtext, ytext){
 # corrected BAG cross/long associations
 p1 = scatter.plot2(BAG$CCc_dMRI,BAG$RoCc_dMRI, c("Centercept of corrected dMRI BAG"), c("dMRI BAG\nRate of Change"))
 p2 = scatter.plot2(BAG$CCc_T1w,BAG$RoCc_T1w, c("Centercept of corrected T1w BAG"), c("T1w BAG\nRate of Change"))
-p3 = scatter.plot2(BAG$CCc_multi,BAG$RoCc_multi, c("Centercept of corrected multimodal BAG"), c("multimodal\nBAG Rate of Change"))
-corrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "none")
+p3 = scatter.plot2(BAG$CCc_multi,BAG$RoCc_multi, c("Centercept of corrected multimodal BAG"), c("multimodal BAG\nRate of Change"))
+corrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "right")
 corrected = annotate_figure(corrected, top = text_grob("Cross-Sectional and Longitudinal Corrected BAG Associations", 
                                            color = "black", size = 12))#face = "bold"
 # renew function
@@ -1208,7 +1256,7 @@ scatter.plot2 = function(x, y, xtext, ytext){
 p1 = scatter.plot2(BAG$CCu_dMRI,BAG$RoCu_dMRI, c("Centercept of uncorrected dMRI BAG"), c("dMRI BAG\nRate of Change"))
 p2 = scatter.plot2(BAG$CCu_T1w,BAG$RoCu_T1w, c("Centercept of uncorrected T1w BAG"), c("T1w BAG\nRate of Change"))
 p3 = scatter.plot2(BAG$CCu_multi,BAG$RoCu_multi, c("Centercept of uncorrected multimodal BAG"), c("multimodal BAG\nRate of Change"))
-uncorrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "none")
+uncorrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "right")
 uncorrected = annotate_figure(uncorrected, top = text_grob("Cross-Sectional and Longitudinal Uncorrected BAG Associations", 
                                                            color = "black", size = 12)) #, face = "bold"
 plot05 = ggpubr::ggarrange(corrected,uncorrected, ncol = 1, common.legend = T)
@@ -1316,6 +1364,18 @@ res1 %>% filter(p < (.05/nrow(res1))) # This seems to be however the only modali
 #
 write.csv(res1, paste(save_path,"BAG_PC_associations.csv",sep=""))
 rm(res1)
+# what we haven't tested yet are associations of BAGs and PCs across modalities
+H_test("CCc_dMRI","PClong_T1w")
+H_test("CCc_multi","PClong_T1w")
+H_test("CCu_dMRI","PClong_T1w")
+H_test("CCu_multi","PClong_T1w")
+
+H_test("CCc_multi","PClong_dMRI")
+H_test("CCc_T1w","PClong_dMRI")
+
+H_test("CCc_dMRI","PClong_multi")
+H_test("CCc_T1w","PClong_multi")
+
 #
 # A portion of this result can be visually more pleasingly respresented charts (see below)
 #
@@ -1399,7 +1459,7 @@ p3 = scatter.plot2(BAG$CCc_T1w,BAG$PClong_T1w, c("Centercept of corrected T1w BA
 p4 = scatter.plot2(BAG$CCc_T1w,BAG$PCcross_T1w, c("Centercept of corrected T1w BAG"), c("Centercept T1w PC"))
 p5 = scatter.plot2(BAG$CCc_multi,BAG$PClong_multi, c("Centercept of\ncorrected multimodal MRI BAG"), c("Rate of Change multimodal MRI PC"))
 p6 = scatter.plot2(BAG$CCc_multi,BAG$PCcross_multi, c("Centercept of\ncorrected multimodal MRI BAG"), c("Centercept multimodal MRI PC"))
-pc  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "none")
+pc  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "bottom")
 pc = annotate_figure(pc, top = text_grob("Associations of Corrected Brain Age Gaps and Principal Components",color = "black", size = 12))
 #
 # renew function
@@ -1421,7 +1481,7 @@ p3 = scatter.plot2(BAG$CCu_T1w,BAG$PClong_T1w, c("Centercept of uncorrected T1w 
 p4 = scatter.plot2(BAG$CCu_T1w,BAG$PCcross_T1w, c("Centercept of uncorrected T1w BAG"), c("Centercept T1w PC"))
 p5 = scatter.plot2(BAG$CCu_multi,BAG$PClong_multi, c("Centercept of\nuncorrected multimodal MRI BAG"), c("Rate of Change multimodal MRI PC"))
 p6 = scatter.plot2(BAG$CCu_multi,BAG$PCcross_multi, c("Centercept of\nuncorrected multimodal MRI BAG"), c("Centercept multimodal MRI PC"))
-pu  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "none")
+pu  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "bottom")
 pu = annotate_figure(pu, top = text_grob("Associations of Uncorrected Brain Age Gaps and Principal Components",color = "black", size = 12))
 plot06.1 = ggpubr::ggarrange(pc,pu,nrow = 1,ncol=2)
 plot06.1 = annotate_figure(plot06.1, top = text_grob("Associations between the Centercept of Brain Age Gap and Principal Components of Brain Features' Change and Centercept",color = "black", size = 14, face = "bold"))
@@ -1440,9 +1500,9 @@ m3 = lm(PClong_multi ~ age*sex + site + ISI + unlist(BAGdf[[3]]$BAGc), data = BA
 summary(m3)
 
 # we use the filtered data frames already containing the annual rate of change for each brain feature (AROC) to check regional associations
-## FIRST FOR BAGs at time point 1
+## FIRST FOR CCc BAGs
 ########## dMRI data
-tmp = cbind(AROC[[1]], ISI = BAG$ISI, RoC = BAG$RoCu_dMRI)
+tmp = cbind(AROC[[1]], ISI = BAG$ISI, BAGc = BAG$CCc_dMRI)
 tmp = scale(tmp)
 tmp2 = BAGdf[[2]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1466,7 +1526,7 @@ print("As indicated by the model including the dMRI PC of change, WM BAG does no
 #
 #
 ########## T1w data
-tmp = cbind(AROC[[2]], ISI = BAG$ISI, RoC = BAG$RoCu_T1w)
+tmp = cbind(AROC[[2]], ISI = BAG$ISI, BAGc = BAG$CCc_T1w)
 tmp = scale(tmp)
 tmp2 = BAGdf[[2]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1489,7 +1549,7 @@ write.csv(exp2, paste(save_path,"BAG_T1w_feature_change_associations.csv",sep=""
 #
 #
 ########## multimodal data
-tmp = cbind(AROC[[3]], ISI = BAG$ISI, RoC = BAG$RoCu_multi)
+tmp = cbind(AROC[[3]], ISI = BAG$ISI, BAGc = BAG$CCc_multi)
 tmp = scale(tmp)
 tmp2 = BAGdf[[3]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1515,7 +1575,7 @@ write.csv(exp3, paste(save_path,"BAG_multimodal_feature_change_associations.csv"
 #
 ## SECOND FOR THE RATE OF CHANGE OF BAG
 ########## dMRI data
-tmp = cbind(AROC[[1]], ISI = BAG$ISI, RoC = BAG$RoCu_dMRI)
+tmp = cbind(AROC[[1]], ISI = BAG$ISI, RoC = BAG$RoCc_dMRI)
 tmp = scale(tmp)
 tmp2 = BAGdf[[2]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1539,7 +1599,7 @@ print("In contrast to the cross-sectional BAG, the rate of change is reflective 
 #
 #
 ########## T1w data
-tmp = cbind(AROC[[2]], ISI = BAG$ISI, RoC = BAG$RoCu_T1w)
+tmp = cbind(AROC[[2]], ISI = BAG$ISI, RoC = BAG$RoCc_T1w)
 tmp = scale(tmp)
 tmp2 = BAGdf[[2]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1562,7 +1622,7 @@ write.csv(exp5, paste(save_path,"BAG_change_T1w_feature_change_associations.csv"
 #
 #
 ########## multimodal data
-tmp = cbind(AROC[[3]], ISI = BAG$ISI, RoC = BAG$RoCu_multi)
+tmp = cbind(AROC[[3]], ISI = BAG$ISI, RoC = BAG$RoCc_multi)
 tmp = scale(tmp)
 tmp2 = BAGdf[[3]]
 tmp2[2:6] = scale(tmp2[2:6])
@@ -1711,12 +1771,6 @@ rm(exp, plot_exp,plot_exp2, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6)
 #
 #
 #
-# continue here
-#
-#
-#
-#
-
 #
 #
 #
@@ -1724,7 +1778,7 @@ rm(exp, plot_exp,plot_exp2, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6)
 # distribution of effects for TP-changes per regions indicating stronger changes in T1w features.
 # see /Users/max/Documents/Projects/LongBAG/results/predefined_hyperparams/unscaled/T1w_feature_TP_diff.csv
 # and /Users/max/Documents/Projects/LongBAG/results/predefined_hyperparams/unscaled/dMRI_feature_TP_diff.csv
-part1 = data.frame(d = na.omit(paired_t_out_dMRI$`Cohens's d`), data = replicate(nrow(na.omit(paired_t_out_dMRI)),"dMRI"))
+part1 = data.frame(d = na.omit(paired_t_out_dMRI$`Cohens's d`), data = replicate(nrow(na.omit(paired_t_out_dMRI[1:11])),"dMRI"))
 part2 = data.frame(d = na.omit(paired_t_out$`Cohens's d`), data = replicate(nrow(na.omit(paired_t_out)),"T1w"))
 ds = rbind(part1,part2)
 # make labels for mean absolute Cohen's d of Feature change between time points
@@ -1756,6 +1810,181 @@ ggsave(file = paste(save_path,"TP_differences_features.pdf",sep=""), plot04, wid
 #
 #
 #
+##### #
+# make another plot including the time point difference but this time separated for diffusion approaches
+##### # T1w
+a11 = ifelse(grepl("thickness",paired_t_out$Metric),'Thickness', NA)
+b11 = ifelse(grepl("volume",paired_t_out$Metric),'Volume', NA)
+c11 = ifelse(grepl("are",paired_t_out$Metric),'Area', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+paired_t_out$Group = a11
+# make data frames for each type of metric
+Vol = paired_t_out %>% na.omit() %>% select(!`SD TP1`) %>% filter(Group == "Volume") %>% select(Metric, `Cohens's d`, Group)
+names(Vol) = c("Region","d", "Metric")
+Area = paired_t_out %>% na.omit() %>% select(!`SD TP1`) %>% filter(Group == "Area") %>% select(Metric, `Cohens's d`, Group)
+names(Area) = c("Region","d", "Metric")
+Thick = paired_t_out %>% na.omit() %>% select(!`SD TP1`) %>% filter(Group == "Thickness") %>% select(Metric, `Cohens's d`, Group)
+names(Thick) = c("Region","d", "Metric")
+# create figs
+this_label = paste("**Area**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(Area$d))),2),"**", sep = "")
+p_area = Area %>% ggplot(aes(x=d)) + geom_density(fill = "#E69F00", alpha = 0.7) + xlab("Feature Change (Cohen's d)")+ylab('Density') + theme_bw() + 
+  theme(legend.title=element_blank()) + labs(x = NULL, y = NULL) + xlim(-1,1) +ylim(0,8) +
+  geom_richtext(aes(x = -1, y = 7, label = this_label),
+                stat = "unique", angle = 0,
+                color = "black", fill = "#E69F00",
+                label.color = NA, hjust = 0, vjust = 0)
+this_label1 = paste("**Thickness**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(Thick$d))),2),"**", sep = "")
+p_thick = Thick %>% ggplot(aes(x=d)) + geom_density(fill = "#E69F00", alpha = 0.7) + xlab("Feature Change (Cohen's d)")+ylab('Density') + theme_bw() + 
+  theme(legend.title=element_blank()) + labs(x = NULL, y = NULL) + xlim(-1,1) + ylim(0,8) +
+  geom_richtext(aes(x = -1, y = 7, label = this_label1),
+                stat = "unique", angle = 0,
+                color = "black", fill = "#E69F00",
+                label.color = NA, hjust = 0, vjust = 0)
+this_label2 = paste("**Volume**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(Vol$d))),2),"**", sep = "")
+p_vol = Vol %>% ggplot(aes(x=d)) + geom_density(fill = "#E69F00", alpha = 0.7) + xlab("Feature Change (Cohen's d)")+ylab('Density') + theme_bw() + 
+  theme(legend.title=element_blank()) + labs(x = NULL, y = NULL) + xlim(-1,1) + ylim(0,8) +
+  geom_richtext(aes(x = -1, y = 7, label = this_label2),
+                stat = "unique", angle = 0,
+                color = "black", fill = "#E69F00",
+                label.color = NA, hjust = 0, vjust = 0)
+#figure = ggarrange(p_area,p_thick, p_vol, nrow = 1)
+#T1fig = annotate_figure(figure, left = textGrob("Density", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+#                bottom = textGrob("Feature Change in T1w Metrics (Cohen's d)", gp = gpar(cex = 1.3)))
+#
+#### # dMRI
+# make a function for plotting
+plot_func = function(data, label){
+  data %>% ggplot(aes(x=d)) + geom_density(fill = "#56B4E9", alpha = 0.7) + xlab("Feature Change (Cohen's d)")+ylab('Density') + theme_bw() + 
+    theme(legend.title=element_blank()) + labs(x = NULL, y = NULL) + xlim(-1,1)  + ylim(0,4) +
+    geom_richtext(aes(x = -1, y = 3.5, label = label),
+                  stat = "unique", angle = 0,
+                  color = "black", fill = "#56B4E9",
+                  label.color = NA, hjust = 0, vjust = 0)
+}
+# DKI
+a11 = ifelse(grepl("ak",paired_t_out_dMRI$Metric),'AK', NA)
+b11 = ifelse(grepl("rk",paired_t_out_dMRI$Metric),'RK', NA)
+c11 = ifelse(grepl("mk",paired_t_out_dMRI$Metric),'MK', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+paired_t_out_dMRI$Group = a11
+DKI = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(DKI) =  c("Region","d", "Metric")
+this_label_dki = paste("**DKI**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(DKI$d))),2),"**", sep = "")
+p_dki = plot_func(DKI, this_label_dki)
+#
+# DTI
+a11 = ifelse(grepl("^AD_",paired_t_out_dMRI$Metric),'AD', NA)
+b11 = ifelse(grepl("^RD_",paired_t_out_dMRI$Metric),'RD', NA)
+c11 = ifelse(grepl("^MD_",paired_t_out_dMRI$Metric),'MD', NA)
+d11 = ifelse(grepl("^FA_",paired_t_out_dMRI$Metric),'FA', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+a11 = ifelse(is.na(a11) == T, d11, a11)
+paired_t_out_dMRI$Group = a11
+DTI = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(DTI) = c("Region","d", "Metric")
+this_label_dti = paste("**DTI**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(DTI$d))),2),"**", sep = "")
+p_dti = plot_func(DTI, this_label_dti)
+#
+# BRIA (note that micro AX and Drad extra were removed due to quality issues)
+a11 = ifelse(grepl("v_intra",paired_t_out_dMRI$Metric),'V intra', NA)
+b11 = ifelse(grepl("v_extra",paired_t_out_dMRI$Metric),'V extra', NA)
+c11 = ifelse(grepl("csf",paired_t_out_dMRI$Metric),'V CSF', NA)
+d11 = ifelse(grepl("micro_Rd",paired_t_out_dMRI$Metric),'micro RD', NA)
+e11 = ifelse(grepl("micro_ADC",paired_t_out_dMRI$Metric),'micro ADC', NA)
+f11 = ifelse(grepl("Dax_intra",paired_t_out_dMRI$Metric),'DAX intra', NA)
+g11 = ifelse(grepl("Dax_extra",paired_t_out_dMRI$Metric),'DAX extra', NA)
+h11 = ifelse(grepl("micro_FA",paired_t_out_dMRI$Metric),'micro FA', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+a11 = ifelse(is.na(a11) == T, d11, a11)
+a11 = ifelse(is.na(a11) == T, e11, a11)
+a11 = ifelse(is.na(a11) == T, f11, a11)
+a11 = ifelse(is.na(a11) == T, g11, a11)
+a11 = ifelse(is.na(a11) == T, h11, a11)
+paired_t_out_dMRI$Group = a11
+BRIA = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(BRIA) =  c("Region","d", "Metric")
+this_label_BRIA = paste("**BRIA**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(BRIA$d))),2),"**", sep = "")
+p_BRIA = plot_func(BRIA, this_label_BRIA)
+#
+# WMTI (note that axEAD was excluded due to quality problems)
+a11 = ifelse(grepl("awf",paired_t_out_dMRI$Metric),'AWF', NA)
+b11 = ifelse(grepl("radEAD",paired_t_out_dMRI$Metric),'radEAD', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+paired_t_out_dMRI$Group = a11
+WMTI = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(WMTI) =  c("Region","d", "Metric")
+this_label_WMTI = paste("**WMTI**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(WMTI$d))),2),"**", sep = "")
+p_WMTI = plot_func(WMTI, this_label_WMTI)
+#
+# SMT
+a11 = ifelse(grepl("smt_fa",paired_t_out_dMRI$Metric),'FA', NA)
+b11 = ifelse(grepl("smt_md",paired_t_out_dMRI$Metric),'MD', NA)
+c11 = ifelse(grepl("smt_trans_",paired_t_out_dMRI$Metric),'Transverse', NA)
+d11 = ifelse(grepl("smt_long",paired_t_out_dMRI$Metric),'Longitudinal', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+a11 = ifelse(is.na(a11) == T, d11, a11)
+paired_t_out_dMRI$Group = a11
+SMT = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(SMT) = c("Region","d", "Metric")
+this_label_SMT = paste("**SMT**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(SMT$d))),2),"**", sep = "")
+p_SMT = plot_func(SMT, this_label_SMT)
+#
+# mcSMT
+a11 = ifelse(grepl("mc_diff",paired_t_out_dMRI$Metric),'Diffusion Coefficient', NA)
+b11 = ifelse(grepl("extramd",paired_t_out_dMRI$Metric),'Extra-Axonal MD', NA)
+c11 = ifelse(grepl("extratra",paired_t_out_dMRI$Metric),'Extra-Axonal Transverse', NA)
+d11 = ifelse(grepl("mc_intra",paired_t_out_dMRI$Metric),'Intra Neurite Volume', NA)
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+a11 = ifelse(is.na(a11) == T, d11, a11)
+paired_t_out_dMRI$Group = a11
+SMTmc = paired_t_out_dMRI %>% na.omit() %>% select(!`SD TP1`) %>% select(Metric, `Cohens's d`, Group)
+names(SMTmc) =  c("Region","d", "Metric")
+this_label_SMTmc = paste("**SMTmc**: mean absolute Cohen\\'s **d = ",round(mean(abs(na.omit(SMTmc$d))),2),"**", sep = "")
+p_SMTmc = plot_func(SMTmc, this_label_SMTmc)
+#
+#
+#
+# in the end, merge all appraches / metric figs
+Dens_Fig = ggarrange(p_area,p_thick, p_vol, p_BRIA, p_dki, p_dti,p_SMT,p_SMTmc, p_WMTI, nrow = 3, ncol = 3)
+Dens_Fig = annotate_figure(Dens_Fig, left = textGrob("Density", rot = 90, vjust = 1, gp = gpar(cex = 1.3)),
+                           bottom = textGrob("Feature Change (Cohen's d)", gp = gpar(cex = 1.3)))
+ggsave(file = paste(save_path,"Changes_by_Approach.pdf",sep=""),Dens_Fig, height = 11, width = 11)
+#
+#
+###### Do the same but outlining all the metrics
+# create a plot function
+plot_func2 = function(data, label){
+  ggplot(data, aes(d , fill=Metric, Metric=Metric, shape=Metric, facets=Metric)) + 
+    geom_density()+ facet_wrap(.~Metric) + theme_bw() + 
+    xlab("Feature Change (Cohen's d)")+ylab('Density')+ 
+    scale_fill_brewer(palette = "Pastel1") + xlim(-1,1)  + ylim(0,8)
+}
+T1_plot_df = rbind(Vol,Area, Thick)
+a = plot_func2(T1_plot_df)
+b = plot_func2(BRIA)
+d = plot_func2(DKI)
+e = plot_func2(DTI)
+f = plot_func2(SMT)
+g = plot_func2(SMTmc)
+h = plot_func2(WMTI)
+Metric_Fig = ggarrange(a,b,d,e,f,g,h, labels = c("a","b","c","d","e","f","g"), ncol = 2)
+ggsave(file = paste(save_path,"Changes_by_Metric.pdf",sep=""),Metric_Fig, height = 15, width = 13)
+#
+# print the mean absolute change (indicated by Cohen's d)
+T1_plot_df %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d)) 
+BRIA %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+DKI %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+DTI %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+SMT %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+SMTmc %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+WMTI %>% group_by(Metric) %>% summarize(Mean = mean(d), SD = sd(d), Md = median(d), Mad = mad(d))
+
 ############################################################################ #
 ############################################################################ #
 # 3.3.2 H2: Interaction effects between inter-scan interval and changes in 
@@ -2102,11 +2331,14 @@ chi$observed # Same problem for diabetics.
 # Now, we do the same in the IMAGING SAMPLE
 pheno_df = merge(pheno_df, BAG, by = "eid")
 t.test(pheno_df$RDS1,pheno_df$RDS2, paired = T) # marginally sig (decrease in depression)
+cohen.d(pheno_df$RDS1,pheno_df$RDS2, paired = T, na.rm = T)
 t.test(pheno_df$N1,pheno_df$N2, paired = T) # sig (decrease in neuroticism)
+cohen.d(pheno_df$N1,pheno_df$N2, paired = T, na.rm = T)
 t.test(pheno_df$WHR1,pheno_df$WHR2, paired = T) # is sig (increase in WHR)
+cohen.d(pheno_df$WHR1,pheno_df$WHR2, paired = T, na.rm = T)
 t.test(pheno_df$smoking1,pheno_df$smoking2, paired = T)
 chi = chisq.test(pheno_df$hypertension1, pheno_df$hypertension2)
-chi # for hypertension there seems to be a difference, which is however driven by
+# for hypertension there seems to be a difference, which is however driven by
 chi$observed # missingness in the data, as outlined here.
 chi = chisq.test(pheno_df$diabetic1, pheno_df$diabetic2)
 chi$observed # Same problem for diabetics.
@@ -2117,6 +2349,24 @@ print("We hence reduce the data frame to the time point 2 phenotype and PGRS mea
 print("This has already been done in p2")
 tpmp = cross_dat %>% select(eid, names(cross_dat[28:33]), names(cross_dat[14:21]))
 pheno_df = merge(tpmp, BAG, by = "eid")
+#
+# We also further examine the relationship of WHR and BAG
+## we estimate the rate of change in WHR
+pheno_df$RoC_WHR = (pheno_df$WHR2-pheno_df$WHR1)/(pheno_df$ISI)
+pheno_df$RoC_Neur = (pheno_df$N2-pheno_df$N1)/(pheno_df$ISI)
+pheno_df$RoC_Dep = (pheno_df$RDS2-pheno_df$RDS1)/(pheno_df$ISI)
+WHR_models = list()
+Neur_models = list()
+Dep_models = list()
+for (i in 1:18){
+  WHR_models[[i]] = (lm(RoC_WHR ~ pheno_df[,26+i] + sex + site + age + ISI, data = pheno_df))
+  Neur_models[[i]] = (lm(RoC_Neur ~ pheno_df[,26+i] + sex + site + age + ISI, data = pheno_df))
+  Dep_models[[i]] = (lm(RoC_Dep ~ pheno_df[,26+i] + sex + site + age + ISI, data = pheno_df))
+}
+# check models
+for (i in 1:length(Neur_models)){
+  print(summary(Dep_models[[i]]))
+}
 #
 #
 #
@@ -2224,7 +2474,6 @@ panel1 = egg::ggarrange(plot00, plot01, ncol = 1, heights = c(.5,2), labels = c(
 panel2 = egg::ggarrange(plot02,plot04, ncol = 1, heights = c(1.6,.4), labels = c("c", "d"))
 Fig1 = ggpubr::ggarrange(panel1, panel2, ncol = 2)
 ggsave(file = paste(save_path,"Fig1.pdf",sep=""),Fig1, height = 13, width = 15)
-#
 # Fig.2: Cross sectional Brain Age estimates are associated
 #
 Fig2 = egg::ggarrange(plot05, plot06.1, plot07,plot08, ncol = 1, heights = c(1,2.2,.75,.85), labels = c("a", "b", "c", ""))
@@ -2627,6 +2876,340 @@ PCA_plot = ggarrange(AROC_Plot, Centercept_Plot, ncol = 1)
 ggsave(file = paste(save_path,"PCA_Relative_Contributios.pdf",sep=""),PCA_plot, width = 16, height = 10)
 #
 #
+#### Estimate the weights per feature
+# order: dMRI; T1w; multimodal
+# we need to add labels for each metric
+#DKI
+a11 = ifelse(grepl("ak",Centercept_dfs[[1]]$Metric),'AK', NA)
+b11 = ifelse(grepl("rk",Centercept_dfs[[1]]$Metric),'RK', NA)
+c11 = ifelse(grepl("mk",Centercept_dfs[[1]]$Metric),'MK', NA)
+# DTI
+d11 = ifelse(grepl("^AD_",Centercept_dfs[[1]]$Metric),'AD', NA)
+e11 = ifelse(grepl("^RD_",Centercept_dfs[[1]]$Metric),'RD', NA)
+f11 = ifelse(grepl("^MD_",Centercept_dfs[[1]]$Metric),'MD', NA)
+g11 = ifelse(grepl("^FA_",Centercept_dfs[[1]]$Metric),'FA', NA)
+# BRIA (note that Drad extra metrics were removed due to quality issues)
+h11 = ifelse(grepl("v_intra",Centercept_dfs[[1]]$Metric),'V intra', NA)
+i11 = ifelse(grepl("v_extra",Centercept_dfs[[1]]$Metric),'V extra', NA)
+j11 = ifelse(grepl("micro_Ax",Centercept_dfs[[1]]$Metric),'micro AX', NA)
+k11 = ifelse(grepl("csf",Centercept_dfs[[1]]$Metric),'V CSF', NA)
+l11 = ifelse(grepl("micro_Rd",Centercept_dfs[[1]]$Metric),'micro RD', NA)
+m11 = ifelse(grepl("micro_ADC",Centercept_dfs[[1]]$Metric),'micro ADC', NA)
+n11 = ifelse(grepl("Dax_intra",Centercept_dfs[[1]]$Metric),'DAX intra', NA)
+o11 = ifelse(grepl("Dax_extra",Centercept_dfs[[1]]$Metric),'DAX extra', NA)
+p11 = ifelse(grepl("micro_FA",Centercept_dfs[[1]]$Metric),'micro FA', NA)
+# WMTI (note that axEAD was excluded due to quality problems)
+q11 = ifelse(grepl("awf",Centercept_dfs[[1]]$Metric),'AWF', NA)
+r11 = ifelse(grepl("radEAD",Centercept_dfs[[1]]$Metric),'radEAD', NA)
+s11 = ifelse(is.na(a11) == T, b11, a11)
+# SMT
+t11 = ifelse(grepl("smt_fa",Centercept_dfs[[1]]$Metric),'FA', NA)
+u11 = ifelse(grepl("smt_md",Centercept_dfs[[1]]$Metric),'MD', NA)
+v11 = ifelse(grepl("smt_trans_",Centercept_dfs[[1]]$Metric),'Transverse', NA)
+w11 = ifelse(grepl("smt_long",Centercept_dfs[[1]]$Metric),'Longitudinal', NA)
+x11 = ifelse(is.na(a11) == T, b11, a11)
+y11 = ifelse(is.na(a11) == T, c11, a11)
+z11 = ifelse(is.na(a11) == T, d11, a11)
+# mcSMT
+a111 = ifelse(grepl("mc_diff",Centercept_dfs[[1]]$Metric),'Diffusion Coefficient', NA)
+b111 = ifelse(grepl("extramd",Centercept_dfs[[1]]$Metric),'Extra-Axonal MD', NA)
+c111 = ifelse(grepl("extratra",Centercept_dfs[[1]]$Metric),'Extra-Axonal Transverse', NA)
+d111 = ifelse(grepl("mc_intra",Centercept_dfs[[1]]$Metric),'Intra Neurite Volume', NA)
+# 
+# merge
+a11 = ifelse(is.na(a11) == T, b11, a11)
+a11 = ifelse(is.na(a11) == T, c11, a11)
+a11 = ifelse(is.na(a11) == T, d11, a11)
+a11 = ifelse(is.na(a11) == T, e11, a11)
+a11 = ifelse(is.na(a11) == T, f11, a11)
+a11 = ifelse(is.na(a11) == T, g11, a11)
+a11 = ifelse(is.na(a11) == T, h11, a11)
+a11 = ifelse(is.na(a11) == T, i11, a11)
+a11 = ifelse(is.na(a11) == T, j11, a11)
+a11 = ifelse(is.na(a11) == T, k11, a11)
+a11 = ifelse(is.na(a11) == T, l11, a11)
+a11 = ifelse(is.na(a11) == T, m11, a11)
+a11 = ifelse(is.na(a11) == T, n11, a11)
+a11 = ifelse(is.na(a11) == T, o11, a11)
+a11 = ifelse(is.na(a11) == T, p11, a11)
+a11 = ifelse(is.na(a11) == T, q11, a11)
+a11 = ifelse(is.na(a11) == T, r11, a11)
+a11 = ifelse(is.na(a11) == T, s11, a11)
+a11 = ifelse(is.na(a11) == T, t11, a11)
+a11 = ifelse(is.na(a11) == T, u11, a11)
+a11 = ifelse(is.na(a11) == T, v11, a11)
+a11 = ifelse(is.na(a11) == T, w11, a11)
+a11 = ifelse(is.na(a11) == T, x11, a11)
+a11 = ifelse(is.na(a11) == T, y11, a11)
+a11 = ifelse(is.na(a11) == T, z11, a11)
+a11 = ifelse(is.na(a11) == T, a111, a11)
+a11 = ifelse(is.na(a11) == T, b111, a11)
+a11 = ifelse(is.na(a11) == T, c111, a11)
+a11 = ifelse(is.na(a11) == T, d111, a11)
+#Centercept_dfs[[1]] %>% filter(is.na(Group)) %>% select(Metric, Approach)
+Centercept_dfs[[1]]$Group = a11
+AROC_dfs[[1]]$Group = a11
+Centercept_dfs[[2]]$Group = Centercept_dfs[[2]]$Approach
+AROC_dfs[[2]]$Group = AROC_dfs[[2]]$Approach
+Centercept_dfs[[3]]$Group = c(Centercept_dfs[[1]]$Group, Centercept_dfs[[2]]$Approach)
+AROC_dfs[[3]]$Group = c(AROC_dfs[[1]]$Group, AROC_dfs[[2]]$Approach)
+# now, we can estimate the relative contribution of each group of variables to the components
+rel.weights1 = list() # centercept
+rel.weights2 = list() # rate of change
+for (i in 1:3){
+  Comp_Cont1 = Centercept_dfs[[i]] %>% group_by(Group) %>% summarize(IC_Weight_sum = sum(PC1)) %>% ungroup %>% data.frame
+  Comp_Cont1weighted = (Comp_Cont1$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))/sum(Comp_Cont1$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))
+  Comp_Cont2 = Centercept_dfs[[i]] %>% group_by(Group) %>% summarize(IC_Weight_sum = sum(PC2)) %>% ungroup %>% data.frame
+  Comp_Cont2weighted = (Comp_Cont2$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))/sum(Comp_Cont2$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))
+  rel.weights1[[i]] = data.frame(PC1_rel_weight = Comp_Cont1weighted, PC2_rel_weight = Comp_Cont2weighted)
+  Comp_Cont1 = AROC_dfs[[i]] %>% group_by(Group) %>% summarize(IC_Weight_sum = sum(PC1)) %>% ungroup %>% data.frame
+  Comp_Cont1weighted = (Comp_Cont1$IC_Weight_sum/table(AROC_dfs[[i]]$Group))/sum(Comp_Cont1$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))
+  Comp_Cont2 = AROC_dfs[[i]] %>% group_by(Group) %>% summarize(IC_Weight_sum = sum(PC2)) %>% ungroup %>% data.frame
+  Comp_Cont2weighted = (Comp_Cont2$IC_Weight_sum/table(AROC_dfs[[i]]$Group))/sum(Comp_Cont2$IC_Weight_sum/table(Centercept_dfs[[i]]$Group))
+  rel.weights2[[i]] = data.frame(PC1_rel_weight = Comp_Cont1weighted, PC2_rel_weight = Comp_Cont2weighted)
+}
+plist1 = list()
+plist2 = list()
+for (i in 1:3){
+  dat = rel.weights1[[i]] %>% select(PC1_rel_weight.Var1, PC1_rel_weight.Freq, PC2_rel_weight.Freq)
+  names(dat) = c("Modality","IC1", "IC2")
+  dat = melt(dat)
+  names(dat) = c("Modality","Component", "Value")
+  plist1[[i]] = dat
+  dat = rel.weights2[[i]] %>% select(PC1_rel_weight.Var1, PC1_rel_weight.Freq, PC2_rel_weight.Freq)
+  names(dat) = c("Modality","IC1", "IC2")
+  dat = melt(dat)
+  names(dat) = c("Modality","Component", "Value")
+  plist2[[i]] = dat
+}
+# manualcolors<-c('black','forestgreen', 'red2', 'orange', 'cornflowerblue', 
+#                 'magenta', 'darkolivegreen4', 'indianred1', 'tan4', 'darkblue', 
+#                 'mediumorchid1','firebrick4',  'yellowgreen', 'lightsalmon', 'tan3',
+#                 "tan1",'darkgray', 'wheat4', '#DDAD4B', 'chartreuse', 
+#                 'seagreen1', 'moccasin', 'mediumvioletred', 'seagreen','cadetblue1',
+#                 "darkolivegreen1")
+# manualcolors2 = c("tan2" ,   "tomato3" , "#7CE3D8")
+# manualcolors3 = c('black','forestgreen', 'red2', 'orange', 'cornflowerblue', 
+#                 'magenta', 'darkolivegreen4', 'indianred1', 'tan4', 'darkblue', 
+#                 'mediumorchid1','firebrick4',  'yellowgreen', 'lightsalmon', 'tan3',
+#                 "tan1",'darkgray', 'wheat4', '#DDAD4B', 'chartreuse', 
+#                 'seagreen1', 'moccasin', 'mediumvioletred', 'seagreen','cadetblue1',
+#                 "darkolivegreen1" ,"tan2" ,   "tomato3" , "#7CE3D8")
+#
+# centercept plots
+panel1 = ggplot(plist1[[1]], aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_colour_manual(values=manualcolors) +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[1:24]) + 
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom',legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+panel2 = ggplot(plist1[[2]], aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_colour_manual(values=manualcolors[]) +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[1:24]) +   
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom',legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+# we want to keep the same order as in plot 1 and 2
+panel3 = plist1[[3]] %>%
+  arrange(Value) %>%
+  #mutate(Modality = factor(Modality, levels= c(levels(plist1[[1]]$Modality),levels(plist1[[2]]$Modality)))) %>%
+  ggplot(aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_colour_manual(values=manualcolors) +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[1:24]) +   
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom',legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+Centercept_Plot = ggpubr::ggarrange(panel1, panel2, panel3, ncol = 3, common.legend = F, align = c("h"))
+Centercept_Plot = annotate_figure(Centercept_Plot,top = text_grob("Modalities' Relative Contribution to Principal Components of the Centercepts", face = "bold", size = 14))
+#
+# aroc plots
+panel1 = ggplot(plist2[[1]], aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[1:6]) + 
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom',legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+panel2 = ggplot(plist2[[2]], aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[7:9]) + 
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom',legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+# we want to keep the same order as in plot 1 and 2
+panel3 = #plist2[[3]] %>%
+  #arrange(Value) %>%
+  #mutate(Modality = factor(Modality, levels= c(levels(plist2[[1]]$Modality),levels(plist2[[2]]$Modality)))) %>%
+  ggplot(plist2[[3]], aes(x = Component, y = Value, fill = Modality)) +
+  #ggplot(aes(x = Component, y = Value, fill = Modality)) +
+  geom_col(colour = "black") +
+  #scale_fill_manual(values = brewer.pal(9,"Pastel1")[1:9]) + 
+  ylab("Relative Contribution") + theme_bw() +
+  theme(legend.position='bottom', legend.title = element_blank()) + xlab("") +
+  scale_x_discrete(labels=c("IC1" = "Principal Component 1", "IC2" = "Principal Component  2"))
+AROC_Plot = ggpubr::ggarrange(panel1, panel2, panel3, ncol = 3, common.legend = F, align = c("h"))
+AROC_Plot = annotate_figure(AROC_Plot,top = text_grob("Modalities' Relative Contribution to Principal Components of the Annual Rates of Change", face = "bold", size = 14))
+PCA_plot = ggarrange(AROC_Plot, Centercept_Plot, ncol = 1)
+ggsave(file = paste(save_path,"PCA_REGIONAL_Relative_Contributios.pdf",sep=""),PCA_plot, width = 22, height = 10)
+#
+#
+#
+#
+#
+## Finally, we make a plot which represents the associations between BAG and changes in features by feature type
+# we already have labels for the different features
+# exp1-3 are the feature change & CCc BAG associations (dMRI, T1w, multi)
+# exp4-6 are the feature change & ARoC BAG associations
+# make column for row names
+exp1$Metric = rownames(exp1)
+exp2$Metric = rownames(exp2)
+exp3$Metric = rownames(exp3)
+exp4$Metric = rownames(exp4)
+exp5$Metric = rownames(exp5)
+exp6$Metric = rownames(exp6)
+# merge the data frames to have metrics grouped (for each approach)
+# dMRI
+a01 = Centercept_dfs[[1]] %>% select(Metric,Group)
+ex1 = merge(exp1, a01, by = "Metric")
+ex4 = merge(exp4, a01, by = "Metric")
+# T1w
+a01 = Centercept_dfs[[2]] %>% select(Metric,Group)
+ex2 = merge(exp2, a01, by = "Metric")
+ex5 = merge(exp5, a01, by = "Metric")
+# multi
+a01 = Centercept_dfs[[3]] %>% select(Metric,Group)
+ex3 = merge(exp3, a01, by = "Metric")
+ex6 = merge(exp6, a01, by = "Metric")
+# create a plot function
+plot_func3 = function(data, label){
+  ggplot(data, aes(betas , fill=Group, Group=Group, shape=Group, facets=Group)) + 
+    geom_density()+ facet_wrap(.~Group) + theme_bw() + 
+    xlab("Association (standardized beta)")+ylab('Density')+ 
+    #scale_fill_brewer(palette = "Pastel1") + 
+    xlim(-1,1)  + ylim(0,25)  +
+    geom_vline(xintercept = 0, colour = "black", lty = 2)
+}
+#T1_plot_df = rbind(Vol,Area, Thick)
+a = plot_func3(ex1)
+b = plot_func3(ex2)
+d = plot_func3(ex3)
+e = plot_func3(ex4)
+f = plot_func3(ex5)
+g = plot_func3(ex6)
+#Metric_Fig = ggarrange(a,b,d,e,f,g, labels = c("a","b","c","d","e","f"), ncol = 2)
+ggsave(file = paste(save_path,"SupplementalFigure8.pdf",sep=""),a, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure9.pdf",sep=""),b, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure10.pdf",sep=""),d, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure11.pdf",sep=""),e, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure12.pdf",sep=""),f, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure13.pdf",sep=""),g, height = 10, width = 10)
+#
+# estimate mean effects
+ex1 = ex1 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex2 = ex2 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex3 = ex3 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex4 = ex4 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex5 = ex5 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex6 = ex6 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+# make two forrest plot like error bar charts (first ARoC, second CC)
+exf = rbind(ex1,ex2,ex3)
+exf$Modality = c(replicate(24,"dMRI"),replicate(3,"T1w"),replicate(nrow(exf)-27,"multimodal"))
+exf2 = rbind(ex4,ex5,ex6)
+exf2$Modality = exf$Modality
+#
+# plot
+CC_avg = ggplot(exf, aes(y = Group, x = M, xmin = M - SD, xmax = M + SD)) + 
+  geom_vline(xintercept = 0, colour = "black", lty = 2) +
+  geom_point() + 
+  geom_errorbarh(height = 0) + 
+  facet_grid(. ~ Modality, scales = "free")+
+  xlab("Average associations between the Annual Rates of BAG and Feature Changes (Mean±SD)") + ylab("")
+ARoC_avg = ggplot(exf2, aes(y = Group, x = M, xmin = M - SD, xmax = M + SD)) + 
+  geom_vline(xintercept = 0, colour = "black", lty = 2) +
+  geom_point() + 
+  geom_errorbarh(height = 0) + 
+  facet_grid(. ~ Modality, scales = "free")+
+  xlab("Average associations between BAG Centercepts and the Annual Rate of Change per Feature (Mean±SD)") + ylab("")
+ggsave(file = paste(save_path,"SupplementalFigure14.pdf",sep=""),CC_avg, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure15.pdf",sep=""),ARoC_avg, height = 10, width = 10)
+#
+#
+# Finally, predict feature change in dMRI data from T1w brain age, and in T1w data from dMRI brain age
+########## dMRI data
+tmp = cbind(AROC[[1]], ISI = BAG$ISI, CCc = BAG$CCc_T1w)
+tmp = scale(tmp)
+tmp2 = BAGdf[[2]]
+tmp2[2:6] = scale(tmp2[2:6])
+tmp = cbind(tmp, tmp2)
+tmp = data.frame(tmp)
+brain_features = names(AROC[[1]])
+betas = c()
+ps = betas
+SE = betas
+for (o in brain_features){
+  f = formula(paste(o," ~ CCc + ISI + age*sex + site", sep = ""))
+  tmp_model = lm(f, data = tmp)
+  betas[o] = summary(tmp_model)$coefficients[2]
+  SE[o] = summary(tmp_model)$coefficients[2,2]
+  ps[o] = summary(tmp_model)$coefficients[2,4]
+}
+data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+mean(abs(exp1$betas))
+########## T1w data
+tmp = cbind(AROC[[2]], ISI = BAG$ISI, CCc = BAG$CCc_dMRI)
+tmp = scale(tmp)
+tmp2 = BAGdf[[2]]
+tmp2[2:6] = scale(tmp2[2:6])
+tmp = cbind(tmp, tmp2)
+tmp = data.frame(tmp)
+brain_features = names(AROC[[2]])
+betas = c()
+ps = betas
+SE = betas
+for (o in brain_features){
+  f = formula(paste(o," ~ CCc + ISI + age*sex + site", sep = ""))
+  tmp_model = lm(f, data = tmp)
+  betas[o] = summary(tmp_model)$coefficients[2]
+  SE[o] = summary(tmp_model)$coefficients[2,2]
+  ps[o] = summary(tmp_model)$coefficients[2,4]
+}
+data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp2 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+mean(abs(exp2$betas))
+#
+# now check feature group level associations
+## first in terms of density
+exp1$Metric = rownames(exp1)
+exp2$Metric = rownames(exp2)
+a01 = Centercept_dfs[[1]] %>% select(Metric,Group)
+ex1 = merge(exp1, a01, by = "Metric")
+a01 = Centercept_dfs[[2]] %>% select(Metric,Group)
+ex2 = merge(exp2, a01, by = "Metric")
+a = plot_func3(ex1)
+b = plot_func3(ex2)
+ggsave(file = paste(save_path,"SupplementalFigure16.pdf",sep=""),a, height = 10, width = 10)
+ggsave(file = paste(save_path,"SupplementalFigure17.pdf",sep=""),b, height = 10, width = 10)
+#
+## then as bar plot
+ex1 = ex1 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+ex2 = ex2 %>% group_by(Group) %>% summarize(M = mean(betas), SD = sd(betas)) %>% data.frame
+exf = rbind(ex1,ex2)
+exf$Modality = c(replicate(24,"dMRI"),replicate(3,"T1w"))
+#
+# plot
+CC_avg = ggplot(exf, aes(y = Group, x = M, xmin = M - SD, xmax = M + SD)) + 
+  geom_vline(xintercept = 0, colour = "black", lty = 2) +
+  geom_point() + 
+  geom_errorbarh(height = 0) + 
+  facet_grid(. ~ Modality, scales = "free")+
+  xlab("Average associations between BAG Centercepts and the Annual Rate of Change per Feature (Mean±SD)") + ylab("")
+ggsave(file = paste(save_path,"SupplementalFigure18.pdf",sep=""),CC_avg, height = 10, width = 10)
+#
+#
 #
 print("The End.")
+
 
