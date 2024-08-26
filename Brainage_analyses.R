@@ -54,7 +54,7 @@ pacman::p_load(lme4, nlme, ggplot2, tidyverse, lm.beta, remotes, ggpubr,
                ggrepel,PASWR2, reshape2, xgboost, confintr, factoextra, mgcv, 
                itsadug, Metrics, ggpointdensity, viridis, MuMIn,hrbrthemes,
                ggridges, egg, pheatmap, ggtext, RColorBrewer,Bioconductor,caret,
-               glmnet,update = F)
+               glmnet,pwr,update = F)
 #install.packages("tidyverse")
 # note: until recent issues between Matrix v1.6.5 and lme4 v1.1.35 are not fixed,
 # one can use the older Matrix version: v1.6.4, or install lme4 from source:
@@ -252,7 +252,6 @@ write.csv(model2, paste(save_path,"LM_T1w_Model_Coefficients.csv",sep=""))
 model3 = glm(age ~., data = data3)
 model3 = data.frame(model3$coefficients)
 write.csv(model3, paste(save_path,"LM_multi_Model_Coefficients.csv",sep=""))
-rm(model1,model2,model3)
 # make vector of stats formula
 perfrow = function(trained_model, data, label){
   r2 = cor(predict(trained_model, data), label)^2
@@ -273,7 +272,7 @@ for (i in 1:length(mods)){
   perfdat[i,] = perfrow(trained_model = mods[[i]], data = dats[[i]], label = dats[[i]]$age)
 }
 LM_performance_table = perfdat
-rm(mods, dats)
+rm(mods, dats,model1,model2,model3)
 #print("We write a performance table for the LM models using the 10-fold CV procedure. XGB and Lasso results can be found another place (python code).")
 #write.csv(LM_performance_table, paste(save_path,"LM_performance_table.csv",sep=""))
 #
@@ -782,8 +781,8 @@ mod.tab = function(data){
   e = summary(fitted_model_c)$coefficients[2,2] # and its standard error
   e1 = summary(fitted_model_u)$coefficients[2,5] # p-val
   f = r.squaredGLMM(fitted_model_c)
-  coef.vec1 = c(a,b,b1,c)
-  coef.vec2 = c(d,e,e1,f)
+  coef.vec1 = c(a,b,b1,c,std1)
+  coef.vec2 = c(d,e,e1,f,std2)
   tmpdf = data.frame(rbind(coef.vec1, coef.vec2))
   names(tmpdf) = c("Beta", "SE", "p", "R2m", "R2c")
   row.names(tmpdf) = c("Uncorrected", "Corrected")
@@ -811,7 +810,33 @@ colnames(M.TP) = c("Mean TP1", "Mean TP2")
 row.names(M.TP) = c("BAGu diffusion weighted","BAGc diffusion weighted", "BAGu T1-weighted","BAGc T1-weighted", "BAGu multimodal",  "BAGc multimodal")
 TP.diff.tab = cbind(TP.diff.tab, M.TP)
 write.csv(TP.diff.tab, paste(save_path,"BAG_TP_differences.csv",sep=""), row.names = T)
+
+# For better comparability, on can also estimate standardized beta coefficients
+beta(a)
 rm(a,b,c,TP.diff.tab, M.TP)
+
+mod.tab.std = function(data){
+  fitted_model_u = lmer(unlist(BAGu) ~ TP + age*sex + site + (1|eid), data = data)
+  fitted_model_c = lmer(unlist(BAGc) ~ TP + age*sex + site + (1|eid), data = data)
+  # also possible to not correct:
+  #fitted_model_u = lmer(BAGu ~ TP + (1|eid), data = data)
+  #fitted_model_c = lmer(BAGc ~ TP + (1|eid), data = data)
+  a = summary(fitted_model_u)$coefficients[2] # corrected TP difference in BAG
+  b = summary(fitted_model_u)$coefficients[2,2] # and its standard error
+  b1 = summary(fitted_model_u)$coefficients[2,5] # p-val
+  c = r.squaredGLMM(fitted_model_u)
+  d = summary(fitted_model_c)$coefficients[2] # uncorrected TP difference in BAG
+  e = summary(fitted_model_c)$coefficients[2,2] # and its standard error
+  e1 = summary(fitted_model_u)$coefficients[2,5] # p-val
+  f = r.squaredGLMM(fitted_model_c)
+  coef.vec1 = c(a,b,b1,c)
+  coef.vec2 = c(d,e,e1,f)
+  tmpdf = data.frame(rbind(coef.vec1, coef.vec2))
+  names(tmpdf) = c("Beta", "SE", "p", "R2m", "R2c")
+  row.names(tmpdf) = c("Uncorrected", "Corrected")
+  return(tmpdf)
+  rm(a,b,b1, c,d,e, e1,f, tmpdf)
+}
 #
 #
 # # For the Figure, we estimate Cohen's d and the surrounding 95% CI (see ggplot defs)
