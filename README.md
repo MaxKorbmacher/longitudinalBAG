@@ -1,5 +1,5 @@
 Code, trained models, figures, supplemental data (full tables), all figures and tables for the paper <br/>
-- "Disentangeling Neurodegeneration: The Brain Age Gap describes Healthy Ageing", Korbmacher, M. et. al. (2024). </p>
+- "Cross-sectional brain age assessments predict future brain change", Korbmacher, M. et. al. (2024). </p>
 **Code:** <br/>
 - Sample_Size_Estimation.R estimation of power / necessary sample size assuming varying parameter shrinkages <br/>
 - nested_CV_example.py example of nested CV procedure applied when training Lasso and XGB models <br/>
