@@ -1,5 +1,5 @@
 # Annual change in white matter brain age, physiology, and associated polygenic disorder risk
-# July 2024, Bergen, Norway
+# Last update: 2 September 2024, Bergen, Norway
 # Max Korbmacher (max.korbmacher@gmail.com)
 # Functional R Version: 4.2.0
 #
@@ -243,15 +243,15 @@ model3 = readRDS(paste(save_path,"CV_models/LM_multi", sep = ""))
 #summary(mod1)
 #
 # save model coefficients only
-model1 = glm(age ~., data = data1)
-model1 = data.frame(model1$coefficients)
-write.csv(model1, paste(save_path,"LM_dMRI_Model_Coefficients.csv",sep=""))
-model2 = glm(age ~., data = data2)
-model2 = data.frame(model2$coefficients)
-write.csv(model2, paste(save_path,"LM_T1w_Model_Coefficients.csv",sep=""))
-model3 = glm(age ~., data = data3)
-model3 = data.frame(model3$coefficients)
-write.csv(model3, paste(save_path,"LM_multi_Model_Coefficients.csv",sep=""))
+model01 = glm(age ~., data = data1)
+model01 = data.frame(model01$coefficients)
+write.csv(model01, paste(save_path,"LM_dMRI_Model_Coefficients.csv",sep=""))
+model02 = glm(age ~., data = data2)
+model02 = data.frame(model02$coefficients)
+write.csv(model02, paste(save_path,"LM_T1w_Model_Coefficients.csv",sep=""))
+model03 = glm(age ~., data = data3)
+model03 = data.frame(model03$coefficients)
+write.csv(model03, paste(save_path,"LM_multi_Model_Coefficients.csv",sep=""))
 # make vector of stats formula
 perfrow = function(trained_model, data, label){
   r2 = cor(predict(trained_model, data), label)^2
@@ -265,11 +265,11 @@ perfrow = function(trained_model, data, label){
 }
 # apply the formula across data frames (1: dMRI, 2: T1w, 3: multi)
 mods = list(model1, model1, model1, model2, model2, model2, model3, model3, model3)
-dats = list(data1, T1w_T1, T1w_T2, unlist(data2), unlist(dMRI_T1), unlist(dMRI_T2), data3, multi_T1, multi_T2)
+dats = list(data1, T1w_T1, T1w_T2, (data2), (dMRI_T1), (dMRI_T2), data3, multi_T1, multi_T2)
 perfdat = data.frame(matrix(nrow=9, ncol=6))
 colnames(perfdat) = c("r2", "MAE", "RMSE", "cor", "CI95l", "CI95u")
 for (i in 1:length(mods)){
-  perfdat[i,] = perfrow(trained_model = mods[[i]], data = dats[[i]], label = dats[[i]]$age)
+  perfdat[i,] = perfrow(trained_model = mods[[i]], data = dats[[i]], label = as.data.frame(dats[[i]])$age)
 }
 LM_performance_table = perfdat
 rm(mods, dats,model1,model2,model3)
@@ -648,8 +648,8 @@ RoCc = centercepts
 # ISI = inter scan interval
 ISI = test_brainage2_dMRI$age - test_brainage1_dMRI$age
 for (i in 1:length(BAGdf2)){
-  centercepts[i] = (BAGdf2[[i]]$BAG2u - BAGdf[[i]]$BAG1u)/2
-  corrected_centercepts[i] = (BAGdf2[[i]]$BAG2c - BAGdf[[i]]$BAG1c)/2
+  centercepts[i] = (BAGdf2[[i]]$BAG2u + BAGdf[[i]]$BAG1u)/2
+  corrected_centercepts[i] = (BAGdf2[[i]]$BAG2c + BAGdf[[i]]$BAG1c)/2
   RoCu[i] = (BAGdf2[[i]]$BAG2u - BAGdf[[i]]$BAG1u)/ISI
   RoCc[i] = (BAGdf2[[i]]$BAG2c - BAGdf[[i]]$BAG1c)/ISI
 }
@@ -781,8 +781,8 @@ mod.tab = function(data){
   e = summary(fitted_model_c)$coefficients[2,2] # and its standard error
   e1 = summary(fitted_model_u)$coefficients[2,5] # p-val
   f = r.squaredGLMM(fitted_model_c)
-  coef.vec1 = c(a,b,b1,c,std1)
-  coef.vec2 = c(d,e,e1,f,std2)
+  coef.vec1 = c(a,b,b1,c[1],c[2])
+  coef.vec2 = c(d,e,e1,f[1],f[2])
   tmpdf = data.frame(rbind(coef.vec1, coef.vec2))
   names(tmpdf) = c("Beta", "SE", "p", "R2m", "R2c")
   row.names(tmpdf) = c("Uncorrected", "Corrected")
@@ -810,14 +810,11 @@ colnames(M.TP) = c("Mean TP1", "Mean TP2")
 row.names(M.TP) = c("BAGu diffusion weighted","BAGc diffusion weighted", "BAGu T1-weighted","BAGc T1-weighted", "BAGu multimodal",  "BAGc multimodal")
 TP.diff.tab = cbind(TP.diff.tab, M.TP)
 write.csv(TP.diff.tab, paste(save_path,"BAG_TP_differences.csv",sep=""), row.names = T)
-
-# For better comparability, on can also estimate standardized beta coefficients
-beta(a)
 rm(a,b,c,TP.diff.tab, M.TP)
-
+# For better comparability, on can also estimate standardized beta coefficients
 mod.tab.std = function(data){
-  fitted_model_u = lmer(unlist(BAGu) ~ TP + age*sex + site + (1|eid), data = data)
-  fitted_model_c = lmer(unlist(BAGc) ~ TP + age*sex + site + (1|eid), data = data)
+  fitted_model_u = lmer(unlist(scale(BAGu)) ~ TP + age*sex + site + (1|eid), data = data)
+  fitted_model_c = lmer(unlist(scale(BAGc)) ~ TP + age*sex + site + (1|eid), data = data)
   # also possible to not correct:
   #fitted_model_u = lmer(BAGu ~ TP + (1|eid), data = data)
   #fitted_model_c = lmer(BAGc ~ TP + (1|eid), data = data)
@@ -837,6 +834,14 @@ mod.tab.std = function(data){
   return(tmpdf)
   rm(a,b,b1, c,d,e, e1,f, tmpdf)
 }
+a = mod.tab.std(diff.dat)
+b = mod.tab.std(T1w.dat)
+c = mod.tab.std(multi.dat)
+TP.diff.tab2 = rbind(a,b,c)
+row.names(TP.diff.tab2) = c("dMRI Uncorrected", "dMRI Corrected",
+                           "T1w Uncorrected", "T1w Corrected",
+                           "multimodal Uncorrected", "multimodal Corrected")
+write.csv(TP.diff.tab2, paste(save_path,"BAG_TP_differences_standardized.csv",sep=""), row.names = T)
 #
 #
 # # For the Figure, we estimate Cohen's d and the surrounding 95% CI (see ggplot defs)
@@ -1249,10 +1254,10 @@ scatter.plot2 = function(x, y, xtext, ytext){
     geom_pointdensity() +
     scale_color_viridis() +
     labs(x = xtext, y = ytext)+
-    stat_cor(method = "pearson", label.x = -3, label.y = 1.75)+
-    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),label.x = -3, label.y = 2.75)+
+    stat_cor(method = "pearson", label.x = -3, label.y = 2.5)+
+    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),label.x = -3, label.y = 3.5)+
     stat_smooth(method = "gam",formula = y ~ s(x, k = 4), col = "red")+
-    labs(color="Number of neighbouring points") + ylim(-2,3)+xlim(-3,3)+
+    labs(color="Number of neighbouring points") + ylim(-2,4)+xlim(-3,3)+
     theme_bw()
 }
 #
@@ -1262,7 +1267,7 @@ scatter.plot2 = function(x, y, xtext, ytext){
 p1 = scatter.plot2(BAG$CCc_dMRI,BAG$RoCc_dMRI, c("Centercept of corrected dMRI BAG"), c("dMRI BAG\nRate of Change"))
 p2 = scatter.plot2(BAG$CCc_T1w,BAG$RoCc_T1w, c("Centercept of corrected T1w BAG"), c("T1w BAG\nRate of Change"))
 p3 = scatter.plot2(BAG$CCc_multi,BAG$RoCc_multi, c("Centercept of corrected multimodal BAG"), c("multimodal BAG\nRate of Change"))
-corrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "right")
+corrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "bottom")
 corrected = annotate_figure(corrected, top = text_grob("Cross-Sectional and Longitudinal Corrected BAG Associations", 
                                            color = "black", size = 12))#face = "bold"
 # renew function
@@ -1271,17 +1276,17 @@ scatter.plot2 = function(x, y, xtext, ytext){
     geom_pointdensity() +
     scale_color_viridis() +
     labs(x = xtext, y = ytext)+
-    stat_cor(method = "pearson", label.x = -6, label.y = 2.5)+
-    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),label.x = -6, label.y = 5.5)+
+    stat_cor(method = "pearson", label.x = -6, label.y = 5)+
+    stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),label.x = -6, label.y = 7)+
     stat_smooth(method = "gam",formula = y ~ s(x, k = 4), col = "red")+
-    labs(color="Number of neighbouring points") + ylim(-6,6)+xlim(-6,6)+
+    labs(color="Number of neighbouring points") + ylim(-6,8)+xlim(-6,6)+
     theme_bw()
 }
 # uncorrected BAG cross/long associations
 p1 = scatter.plot2(BAG$CCu_dMRI,BAG$RoCu_dMRI, c("Centercept of uncorrected dMRI BAG"), c("dMRI BAG\nRate of Change"))
 p2 = scatter.plot2(BAG$CCu_T1w,BAG$RoCu_T1w, c("Centercept of uncorrected T1w BAG"), c("T1w BAG\nRate of Change"))
 p3 = scatter.plot2(BAG$CCu_multi,BAG$RoCu_multi, c("Centercept of uncorrected multimodal BAG"), c("multimodal BAG\nRate of Change"))
-uncorrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "right")
+uncorrected = ggpubr::ggarrange(p1,p2,p3, ncol = 3, common.legend = T, legend = "bottom")
 uncorrected = annotate_figure(uncorrected, top = text_grob("Cross-Sectional and Longitudinal Uncorrected BAG Associations", 
                                                            color = "black", size = 12)) #, face = "bold"
 plot05 = ggpubr::ggarrange(corrected,uncorrected, ncol = 1, common.legend = T)
@@ -1384,7 +1389,7 @@ for (i in 1:nrow(BAG_pairs)){
 names(res1) = c("Std.Beta", "SE", "t", "p")
 rownames(res1) = paste(BAG_pairs$y, BAG_pairs$x, sep = "_")
 #
-# This (following) result indicates relatively strong associations between PCs and T1w BAG
+# This (following) result indicates relatively strong associations between PCs and T1w BAG (cross-sectionally, but not longitudinally)
 res1 %>% filter(p < (.05/nrow(res1))) # This seems to be however the only modality showing such association consistently.
 #
 write.csv(res1, paste(save_path,"BAG_PC_associations.csv",sep=""))
@@ -1482,7 +1487,7 @@ p1 = scatter.plot2(BAG$CCc_dMRI,BAG$PClong_dMRI, c("Centercept of corrected dMRI
 p2 = scatter.plot2(BAG$CCc_dMRI,BAG$PCcross_dMRI, c("Centercept of corrected dMRI BAG"), c("Centercept dMRI PC"))
 p3 = scatter.plot2(BAG$CCc_T1w,BAG$PClong_T1w, c("Centercept of corrected T1w BAG"), c("Rate of Change T1w PC"))
 p4 = scatter.plot2(BAG$CCc_T1w,BAG$PCcross_T1w, c("Centercept of corrected T1w BAG"), c("Centercept T1w PC"))
-p5 = scatter.plot2(BAG$CCc_multi,BAG$PClong_multi, c("Centercept of\ncorrected multimodal MRI BAG"), c("Rate of Change multimodal MRI PC"))
+p5 = scatter.plot2(BAG$CCc_multi,BAG$PClong_multi, c("Centercept of\ncorrected multimodal MRI BAG"), c("Rate of Change\nmultimodal MRI PC"))
 p6 = scatter.plot2(BAG$CCc_multi,BAG$PCcross_multi, c("Centercept of\ncorrected multimodal MRI BAG"), c("Centercept multimodal MRI PC"))
 pc  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "bottom")
 pc = annotate_figure(pc, top = text_grob("Associations of Corrected Brain Age Gaps and Principal Components",color = "black", size = 12))
@@ -1504,7 +1509,7 @@ p1 = scatter.plot2(BAG$CCu_dMRI,BAG$PClong_dMRI, c("Centercept of uncorrected dM
 p2 = scatter.plot2(BAG$CCu_dMRI,BAG$PCcross_dMRI, c("Centercept of uncorrected dMRI BAG"), c("Centercept dMRI PC"))
 p3 = scatter.plot2(BAG$CCu_T1w,BAG$PClong_T1w, c("Centercept of uncorrected T1w BAG"), c("Rate of Change T1w PC"))
 p4 = scatter.plot2(BAG$CCu_T1w,BAG$PCcross_T1w, c("Centercept of uncorrected T1w BAG"), c("Centercept T1w PC"))
-p5 = scatter.plot2(BAG$CCu_multi,BAG$PClong_multi, c("Centercept of\nuncorrected multimodal MRI BAG"), c("Rate of Change multimodal MRI PC"))
+p5 = scatter.plot2(BAG$CCu_multi,BAG$PClong_multi, c("Centercept of\nuncorrected multimodal MRI BAG"), c("Rate of Change\nmultimodal MRI PC"))
 p6 = scatter.plot2(BAG$CCu_multi,BAG$PCcross_multi, c("Centercept of\nuncorrected multimodal MRI BAG"), c("Centercept multimodal MRI PC"))
 pu  = ggpubr::ggarrange(p1,p2,p3,p4,p5,p6, ncol = 2,nrow = 3, common.legend = T, legend = "bottom")
 pu = annotate_figure(pu, top = text_grob("Associations of Uncorrected Brain Age Gaps and Principal Components",color = "black", size = 12))
@@ -1547,7 +1552,7 @@ for (o in brain_features){
 data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
 exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
 write.csv(exp1, paste(save_path,"BAG_dMRI_feature_change_associations.csv",sep=""))
-print("As indicated by the model including the dMRI PC of change, WM BAG does not well in predicting brain changes.")
+print("On the feature level, dMRI BAG does well in predicting brain changes.")
 #
 #
 ########## T1w data
@@ -1664,6 +1669,7 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
+data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
 exp6 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
 write.csv(exp6, paste(save_path,"BAG_change_multimodal_feature_change_associations.csv",sep=""))
 #
@@ -1707,7 +1713,7 @@ p2 = expl2 %>%
   xlab("Feature Change Association (Std. Beta)")+ylab('Density') + theme_bw(base_size = 12) + 
   theme(legend.title=element_blank()) +
   scale_fill_manual(values = c("#E69F00","#56B4E9"))+
-  ggtitle("T1-weighted MRI") + xlim(-.5,.5) + ylim(-7,10) +
+  ggtitle("T1-weighted MRI") + xlim(-.5,.5) + ylim(-7,12) +
   geom_vline(xintercept = 0, linetype="dashed", color = "black", size=.4) + 
   geom_hline(yintercept = 0, size = .4) +
   theme(plot.title = element_text(size = 12))
@@ -1801,8 +1807,6 @@ rm(exp, plot_exp,plot_exp2, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6)
 #
 # A potential explanation for the observed small effects can be found in the 
 # distribution of effects for TP-changes per regions indicating stronger changes in T1w features.
-# see /Users/max/Documents/Projects/LongBAG/results/predefined_hyperparams/unscaled/T1w_feature_TP_diff.csv
-# and /Users/max/Documents/Projects/LongBAG/results/predefined_hyperparams/unscaled/dMRI_feature_TP_diff.csv
 part1 = data.frame(d = na.omit(paired_t_out_dMRI$`Cohens's d`), data = replicate(nrow(na.omit(paired_t_out_dMRI[1:11])),"dMRI"))
 part2 = data.frame(d = na.omit(paired_t_out$`Cohens's d`), data = replicate(nrow(na.omit(paired_t_out)),"T1w"))
 ds = rbind(part1,part2)
@@ -2501,8 +2505,8 @@ Fig1 = ggpubr::ggarrange(panel1, panel2, ncol = 2)
 ggsave(file = paste(save_path,"Fig1.pdf",sep=""),Fig1, height = 13, width = 15)
 # Fig.2: Cross sectional Brain Age estimates are associated
 #
-Fig2 = egg::ggarrange(plot05, plot06.1, plot07,plot08, ncol = 1, heights = c(1,2.2,.75,.85), labels = c("a", "b", "c", ""))
-ggsave(file = paste(save_path,"Fig2.pdf",sep=""),Fig2, height = 18, width = 15)
+Fig2 = egg::ggarrange(plot05, plot06.1, plot07,plot08, ncol = 1, heights = c(2.2,3.2,1,1), labels = c("a", "b", "c", ""))
+ggsave(file = paste(save_path,"Fig2.pdf",sep=""),Fig2, height = 22, width = 15)
 #
 # Fig.3: Geno- and Phenotype Associations with Brain Age
 #
