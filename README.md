@@ -7,6 +7,7 @@ Code, trained models, figures, supplemental data (full tables), all figures and 
 - CV_predict.py predictions using XGB models <br/>
 - TimeIsolatedBrainAge.R contains the analyses of brain ages predicted at each time point doing a 50-50 split and predicting within and across time points. </p>
 **Models:** <br/>
+* For the winning Linear Models, the weights are available from LM_T1w_Model_Coefficients.csv, LM_dMRI_Model_Coefficients.csv, and LM_multi_Model_Coefficients.csv
 * XGB_T1w_model.txt, XGB_dMRI_model.txt, XGB_multimodal_model.txt <br/>
 * Lasso_T1_model.pkl, Lasso_dMRI_model.pkl, Lasso_multi_model.pkl </p>
 **Supplement:** <br/>
