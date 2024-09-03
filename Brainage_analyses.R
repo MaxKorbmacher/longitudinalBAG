@@ -39,13 +39,13 @@
 # set working and saving directories
 ## I set the working dir to the place where the data are stored.
 ## Change this location!
-setwd("/Users/max/Library/CloudStorage/OneDrive-HøgskulenpåVestlandet/Documents/Projects/LongBAG/data/unscaled")
+setwd("/your/path")
 ## The save_path is where the output/results (figures and tables) are stored
 ## Change this location!
-save_path = "/Users/max/Library/CloudStorage/OneDrive-HøgskulenpåVestlandet/Documents/Projects/LongBAG/results/unscaled/"
+save_path = "/your/save/path/"
 ## previous predictions from different models will also have a location (not all code is contained in this single file)
 # These predictions are named uniformely and placed in individual folders (per algorithm)
-prev_preds = "/Users/max/Library/CloudStorage/OneDrive-HøgskulenpåVestlandet/Documents/Projects/LongBAG/results/prediction/"
+prev_preds = "/predictions/made/by/different/pre/trained/models/"
 #
 # load packages
 if (!require("pacman")) install.packages("pacman")
