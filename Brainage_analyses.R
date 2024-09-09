@@ -1,5 +1,5 @@
 # Annual change in white matter brain age, physiology, and associated polygenic disorder risk
-# Last update: 2 September 2024, Bergen, Norway
+# Last update: 9 September 2024, Bergen, Norway
 # Max Korbmacher (max.korbmacher@gmail.com)
 # Functional R Version: 4.2.0
 #
@@ -39,13 +39,13 @@
 # set working and saving directories
 ## I set the working dir to the place where the data are stored.
 ## Change this location!
-setwd("/your/path")
+setwd("/your/working/directory")
 ## The save_path is where the output/results (figures and tables) are stored
 ## Change this location!
-save_path = "/your/save/path/"
+save_path = "/your/save/directory/"
 ## previous predictions from different models will also have a location (not all code is contained in this single file)
 # These predictions are named uniformely and placed in individual folders (per algorithm)
-prev_preds = "/predictions/made/by/different/pre/trained/models/"
+prev_preds = "/irrelevant/folder/for/predictions/from/non-winning/models/"
 #
 # load packages
 if (!require("pacman")) install.packages("pacman")
@@ -54,7 +54,7 @@ pacman::p_load(lme4, nlme, ggplot2, tidyverse, lm.beta, remotes, ggpubr,
                ggrepel,PASWR2, reshape2, xgboost, confintr, factoextra, mgcv, 
                itsadug, Metrics, ggpointdensity, viridis, MuMIn,hrbrthemes,
                ggridges, egg, pheatmap, ggtext, RColorBrewer,Bioconductor,caret,
-               glmnet,pwr,update = F)
+               glmnet,pwr,qvalue,update = F)
 #install.packages("tidyverse")
 # note: until recent issues between Matrix v1.6.5 and lme4 v1.1.35 are not fixed,
 # one can use the older Matrix version: v1.6.4, or install lme4 from source:
@@ -272,7 +272,7 @@ for (i in 1:length(mods)){
   perfdat[i,] = perfrow(trained_model = mods[[i]], data = dats[[i]], label = as.data.frame(dats[[i]])$age)
 }
 LM_performance_table = perfdat
-rm(mods, dats,model1,model2,model3)
+rm(mods, dats)
 #print("We write a performance table for the LM models using the 10-fold CV procedure. XGB and Lasso results can be found another place (python code).")
 #write.csv(LM_performance_table, paste(save_path,"LM_performance_table.csv",sep=""))
 #
@@ -1549,8 +1549,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp1, paste(save_path,"BAG_dMRI_feature_change_associations.csv",sep=""))
 print("On the feature level, dMRI BAG does well in predicting brain changes.")
 #
@@ -1573,8 +1573,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp2 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp2 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp2, paste(save_path,"BAG_T1w_feature_change_associations.csv",sep=""))
 #
 #
@@ -1596,8 +1596,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp3 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp3 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp3, paste(save_path,"BAG_multimodal_feature_change_associations.csv",sep=""))
 #
 #
@@ -1622,8 +1622,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp4 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp4 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp4, paste(save_path,"BAG_change_dMRI_feature_change_associations.csv",sep=""))
 print("In contrast to the cross-sectional BAG, the rate of change is reflective of brain feature change.")
 #
@@ -1646,8 +1646,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp5 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp5 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp5, paste(save_path,"BAG_change_T1w_feature_change_associations.csv",sep=""))
 #
 #
@@ -1669,8 +1669,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp6 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp6 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 write.csv(exp6, paste(save_path,"BAG_change_multimodal_feature_change_associations.csv",sep=""))
 #
 #
@@ -1691,7 +1691,7 @@ plot_exp2 = list(exp4,exp5,exp6)
 expl1 = do.call(rbind, expl1) #dMRI
 expl2 = do.call(rbind, expl2) #T1w
 expl3 = do.call(rbind, expl3) #multimodal
-p1 = expl1 %>%
+p1 = expl1 %>% 
   ggplot( aes(x=betas, fill=Predictor,group=Predictor)) +
   geom_density(aes(y=-1*..density..),alpha=0.6,
                data = ~ subset(., !Predictor %in% c("Cross sectional BAG as predictor")))+
@@ -1733,22 +1733,46 @@ p3 = expl3 %>%
 plot07 = ggpubr::ggarrange(p1,p2,p3, common.legend = T, legend = "bottom", nrow = 1)
 plot07 = annotate_figure(plot07, top = text_grob("Distribution of Associations between BAG and Brain Feature Change",color = "black", face = "bold", size = 14))
 ggsave(file = paste(save_path,"Explaining_feature_change.pdf",sep=""), plot07, width = 13, height = 5)
+print("also estimate some meta stats on the T1w BAG feature associations")
+print("NOTE: These stats are based on ALL rows, including those with p>.05!!!!")
+print("For volume")
+exp5$Metric = row.names(exp5)
+exp5 %>%  filter(grepl("volume",Metric))%>% summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
+print("For area")
+exp5 %>%  filter(grepl("area",Metric))%>%summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
+print("For thickness")
+exp5 %>%  filter(grepl("thickness",Metric))%>%summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
+print("##########")
+print("Now considering only Bonferroni corrected values.")
+print("For volume")
+exp5 %>%  filter(grepl("volume",Metric))%>% filter(p.adj<.05)%>%summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
+print("For area")
+exp5 %>%  filter(grepl("area",Metric))%>%filter(p.adj<.05)%>%summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
+print("For thickness")
+exp5 %>%  filter(grepl("thickness",Metric))%>%filter(p.adj<.05)%>%summarize(Mean=mean(abs(betas)),SD=sd(abs(betas)))
 #
 # Estimate meta stats
 print("First estimate average absolute effect sizes and their standard deviations.")
 descriptor = c("TP1 BAG", "Annual change in BAG")
 for (i in 1:2){
   print(descriptor[i])
-  print(paste("dMRI Mean = ", round(mean(abs(exp[[1]][[i]]$betas)),2),"dMRI SD = ", round(sd(abs(exp[[1]][[i]]$betas)),2)))
-  print(paste("T1w Mean = ", round(mean(abs(exp[[2]][[i]]$betas)),2),"T1w SD = ", round(sd(abs(exp[[2]][[i]]$betas)),2)))
-  print(paste("multi Mean = ", round(mean(abs(exp[[3]][[i]]$betas)),2), "multi SD = ", round(sd(abs(exp[[3]][[i]]$betas)),2)))
+  print(paste("dMRI Mean = ", exp[[1]][[i]] %>% filter(p.adj < .05)%>%select(betas)%>%abs%>% summarize(M=mean(betas))%>%round(3),"dMRI SD = ", exp[[1]][[i]] %>% filter(p.adj<.05)%>%select(betas)%>%abs%>% summarize(SD=sd(betas))%>%round(3)))
+  print(paste("T1w Mean = ", exp[[2]][[i]] %>% filter(p.adj < .05)%>%select(betas)%>%abs%>% summarize(M=mean(betas))%>%round(3),"T1w SD = ", exp[[2]][[i]] %>% filter(p.adj<.05)%>%select(betas)%>%abs%>% summarize(SD=sd(betas))%>%round(3)))
+  print(paste("multi Mean = ", exp[[3]][[i]] %>% filter(p.adj < .05)%>%select(betas)%>%abs%>% summarize(M=mean(betas))%>%round(3), "multi SD = ", exp[[3]][[i]] %>% filter(p.adj<.05)%>%select(betas)%>%abs%>% summarize(SD=sd(betas))%>%round(3)))
 }
-print("Second, estimate the proportion of brain features for which brain age could statistically significantly explain change.")
+print("Second, estimate the proportion of brain features for which brain age could statistically significantly explain change (Bonferroni corrected).")
 for (i in 1:2){
   print(descriptor[i])
   print(paste("dMRI:", round(exp[[1]][[i]]%>% filter(p.adj < .05) %>% nrow()/nrow(exp[[1]][[i]]),4)*100,"%",sep=""))
   print(paste("T1w:", round(exp[[2]][[i]]%>% filter(p.adj < .05) %>% nrow()/nrow(exp[[2]][[i]]),4)*100,"%",sep=""))
   print(paste("multi:", round(exp[[3]][[i]]%>% filter(p.adj < .05) %>% nrow()/nrow(exp[[3]][[i]]),4)*100,"%",sep=""))
+}
+print("Third, print the share of false discoveries for each modality")
+for (i in 1:2){
+  print(descriptor[i])
+  print(paste("dMRI:", qvalue(p=(exp[[1]][[i]]$p), lambda=0.5, pfdr=TRUE)$pi0,sep=""))
+  print(paste("T1w:", qvalue(p=(exp[[2]][[i]]$p))$pi0,sep=""))
+  print(paste("multi:", qvalue(p=(exp[[3]][[i]]$p))$pi0,sep=""))
 }
 #
 # Make a small figure of these values.
@@ -1760,10 +1784,10 @@ tmp4 = c()
 tmp5 = c()
 tmp6 = c()
 for (i in 1:length(plot_exp)){
-  tmp1[i] = mean(abs(plot_exp[[i]]$betas))
-  tmp2[i] = mean(abs(plot_exp2[[i]]$betas))
-  tmp3[i] = sd(abs(plot_exp[[i]]$betas))
-  tmp4[i] = sd(abs(plot_exp2[[i]]$betas))
+  tmp1[i] = as.numeric(plot_exp[[i]]%>% filter(p.adj < .05) %>%summarise(M = mean(abs(betas))))
+  tmp2[i] = as.numeric(plot_exp2[[i]]%>% filter(p.adj < .05) %>%summarise(M = mean(abs(betas))))
+  tmp3[i] = as.numeric(plot_exp[[i]]%>% filter(p.adj < .05) %>%summarise(SD = sd(abs(betas))))
+  tmp4[i] = as.numeric(plot_exp2[[i]]%>% filter(p.adj < .05) %>%summarise(SD = sd(abs(betas))))
   tmp5[i] = plot_exp[[i]]%>% filter(p.adj < .05) %>% nrow()/nrow(plot_exp[[i]])
   tmp6[i] = plot_exp2[[i]]%>% filter(p.adj < .05) %>% nrow()/nrow(plot_exp2[[i]])
 }
@@ -1793,7 +1817,7 @@ p2 = ggplot(plot_frame, aes(Modality, Percentage, group = BAG_type)) +
   geom_segment(aes(x = Modality, xend = Modality, y = 0, yend = Percentage), color = "gray", lwd = 1) +
   geom_point(size = 12, pch = 21, bg = c("#E69F00","#E69F00","#E69F00","#56B4E9","#56B4E9","#56B4E9")) +
   geom_text(aes(label = perc.label), color = "black", size = 3) + xlab("") +
-  coord_flip() + theme_minimal(base_size = 12) + ylab("% of FDR-corrected p<.05 Feature Associations")
+  coord_flip() + theme_minimal(base_size = 12) + ylab("% of Bonferroni-corrected p<.05 Feature Associations")
 plot08 = ggpubr::ggarrange(p1,p2,nrow = 1, common.legend = T, legend = "bottom")
 ggsave(file = paste(save_path,"long_BAG_Feature_Assoc_Dist_lollipop.pdf",sep=""), p1, width = 7, height = 5)
 ggsave(file = paste(save_path,"long_BAG_Feature_Assoc_Dist_percentage.pdf",sep=""), p2, width = 7, height = 5)
@@ -2252,17 +2276,18 @@ plot_dat = rbind(plot_dat1,plot_dat2)
 plot_dat$names = c("Depression","Neuroticism","WHR","Smoking","Hypertension", "Diabetic",
                    "ANX","ADHD","ASD","BIP","MDD","OCD","SCZ","AD")
 #
-# min p before FDR adjustment
+# min p before Bonferroni adjustment
 min(plot_dat$p)
 # min p after FDR adjustment
-min(p.adjust(plot_dat$p, method = "fdr"))
+min(p.adjust(plot_dat$p, method = "bonferroni"))
 #
-# show all the findings surviving FDR correction
-plot_dat %>% select(names, variable, value, p) %>% dplyr::filter(p.adjust(p, method = "fdr") < .05)
+plot_dat$p.adj=p.adjust(plot_dat$p)
+# show all the findings surviving Bonferroni correction
+plot_dat %>% select(names, variable, value, p,p.adj) %>% dplyr::filter(p.adjust(p, method = "bonferroni") < .05)
 #
 # TILE PLOT FOR GLOBAL METRICS AT EACH TIME POINT
 # create colors for frames around tiles
-plot_dat$colors = c(ifelse(p.adjust(plot_dat$p, method = "fdr") < .05,"black", "white"))
+plot_dat$colors = c(ifelse(p.adjust(plot_dat$p, method = "bonferroni") < .05,"black", "white"))
 #
 #
 #################### CREATE PLOTS FOR TP1
@@ -2442,14 +2467,14 @@ plot_dat1$p = p_frame1$value
 # min p before FDR adjustment
 min(p_frame1$value)
 # min p after FDR adjustment
-min(p.adjust(p_frame1$value, method = "fdr"))
+min(p.adjust(p_frame1$value, method = "bonferroni"))
 #
 # we can also filter findings based on p-values before correction to get an overview...
 p_frame1 %>% select(names, variable, value) %>% dplyr::filter(value < .05)
 #
 # TILE PLOT FOR GLOBAL METRICS AT EACH TIME POINT
 # create colors for frames around tiles
-p_frame1$colors = c(ifelse(p.adjust(p_frame1$value, method = "fdr") < .05,"black", "white"))
+p_frame1$colors = c(ifelse(p.adjust(p_frame1$value, method = "bonferroni") < .05,"black", "white"))
 #
 #
 # create plots, start with polygenic risk scores
@@ -2618,14 +2643,14 @@ plot_dat$names = c("Depression","Neuroticism","WHR","Smoking","Hypertension", "D
 # min p before FDR adjustment
 min(plot_dat$p)
 # min p after FDR adjustment
-min(p.adjust(plot_dat$p, method = "fdr"))
+min(p.adjust(plot_dat$p, method = "bonferroni"))
 #
 # show all the findings surviving FDR correction
-plot_dat %>% select(names, variable, value, p) %>% dplyr::filter(p.adjust(p, method = "fdr") < .05)
+plot_dat %>% select(names, variable, value, p) %>% dplyr::filter(p.adjust(p, method = "bonferroni") < .05)
 #
 # TILE PLOT FOR GLOBAL METRICS AT EACH TIME POINT
 # create colors for frames around tiles
-plot_dat$colors = c(ifelse(p.adjust(plot_dat$p, method = "fdr") < .05,"black", "white"))
+plot_dat$colors = c(ifelse(p.adjust(plot_dat$p, method = "bonferroni") < .05,"black", "white"))
 #
 #
 #################### CREATE PLOTS FOR TP1
@@ -3184,8 +3209,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp1 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 mean(abs(exp1$betas))
 ########## T1w data
 tmp = cbind(AROC[[2]], ISI = BAG$ISI, CCc = BAG$CCc_dMRI)
@@ -3205,8 +3230,8 @@ for (o in brain_features){
   SE[o] = summary(tmp_model)$coefficients[2,2]
   ps[o] = summary(tmp_model)$coefficients[2,4]
 }
-data.frame(betas, ps = p.adjust(ps, method = "fdr")) %>% filter(ps < .05) %>% nrow()/length(betas)
-exp2 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "fdr"))
+data.frame(betas, ps = p.adjust(ps, method = "bonferroni")) %>% filter(ps < .05) %>% nrow()/length(betas)
+exp2 = data.frame(betas, SE, p = ps, p.adj = p.adjust(ps, method = "bonferroni"))
 mean(abs(exp2$betas))
 #
 # now check feature group level associations
