@@ -1,5 +1,7 @@
 Code, trained models, figures, supplemental data (full tables), all figures and tables for the paper <br/>
-- "Cross-sectional brain age assessments predict future brain change", Korbmacher, M. et. al. (2024). </p>
+- "Cross-Sectional Brain Age Assessments Are Limited in Predicting Future Brain Change", Human Brain Mapping, Korbmacher, M. et. al. (2025). https://doi.org/10.1002/hbm.70203
+- Please cite the paper when reusing code or materials.
+</p>
 **Code:** <br/>
 - Sample_Size_Estimation.R estimation of power / necessary sample size assuming varying parameter shrinkages <br/>
 - nested_CV_example.py example of nested CV procedure applied when training Lasso and XGB models <br/>
